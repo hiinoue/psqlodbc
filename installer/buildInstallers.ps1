@@ -123,6 +123,8 @@ function buildInstaller($CPUTYPE)
 			$PODBCMSVPDLL=$PODBCMSVCDLL.Replace("msvcr", "msvcp")
 			$PODBCMSVCSYS=$dlls[1]
 			$PODBCMSVPSYS=$PODBCMSVCSYS.Replace("msvcr", "msvcp")
+		} else {
+			$script:wRedist="-withRedist"
 		}
 		# where's the runtime dll libpq links? 
 		$msvclist=& ${dumpbinexe} /imports $LIBPQBINDIR\libpq.dll | select-string -pattern "^\s*msvcr(\d+)0\.dll" | % {$_.matches[0].Groups[1].Value}
@@ -138,6 +140,8 @@ function buildInstaller($CPUTYPE)
 				$LIBPQMSVCSYS=$dlls[1]
 				Write-Host "LIBPQ requires msvcr${runtime_version1}0.dll"
 			}
+		} else {
+			$script:wRedist = "-withRedist"
 		}
 	}
 
@@ -255,13 +259,16 @@ Import-Module ${scriptPath}\..\winbuild\MSProgram-Get.psm1
 try {
 	$dumpbinexe = Find-Dumpbin
 
+	$wRedist=""
 	$VERSION = getVersion $configInfo
 	if ($cpu -eq "both") {
 		buildInstaller "x86"
 		buildInstaller "x64"
+		$VERSION = $configInfo.Configuration.version
+		write-host "wRedist=$wRedist"
 		try {
 			pushd "$scriptPath"
-			psqlodbc-setup\buildBootstrapper.ps1 -version $VERSION
+			psqlodbc-setup\buildBootstrapper.ps1 -version $VERSION $wRedist
 			if ($LASTEXITCODE -ne 0) {
 				throw "Failed to build bootstrapper"
 			}
