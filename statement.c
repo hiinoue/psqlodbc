@@ -2860,18 +2860,49 @@ extern  CRITICAL_SECTION        common_cs;
 #elif defined(POSIX_MULTITHREAD_SUPPORT)
 extern  pthread_mutex_t         common_cs;
 #endif /* WIN_MULTITHREAD_SUPPORT */
+static BOOL common_cs_use()
+{
+	static int use_common_cs = -1;
+
+	if (use_common_cs < 0)
+	{
+		const char *str;
+
+		if (NULL != (str = getenv("PSQLODBC_COMMON_CS")))
+		{
+			use_common_cs = atoi(str);
+		}
+		if (use_common_cs < 0)
+			use_common_cs = 0;
+		mylog("use_common_cs=%d\n", use_common_cs);
+	}
+
+	return (use_common_cs > 0);
+}
+
+static	void enter_common_cs()
+{
+	if (common_cs_use())
+		ENTER_COMMON_CS;
+}
+static	void leave_common_cs()
+{
+	if (common_cs_use())
+		LEAVE_COMMON_CS;
+}
 BOOL	SC_IsExecuting(const StatementClass *self)
 {
 	BOOL	ret;
-	ENTER_COMMON_CS; /* short time blocking */
+	enter_common_cs(); /* short time blocking */
 	ret = (STMT_EXECUTING == self->status);
-	LEAVE_COMMON_CS;
+	leave_common_cs();
 	return ret;
 }
+
 BOOL	SC_SetExecuting(StatementClass *self, BOOL on)
 {
 	BOOL	exeSet = FALSE;
-	ENTER_COMMON_CS; /* short time blocking */
+	enter_common_cs(); /* short time blocking */
 	if (on)
 	{
 		if (0 == (self->cancel_info & CancelRequestSet))
@@ -2886,7 +2917,7 @@ BOOL	SC_SetExecuting(StatementClass *self, BOOL on)
 		self->status = STMT_FINISHED;
 		exeSet = TRUE;
 	}
-	LEAVE_COMMON_CS;
+	leave_common_cs();
 	return exeSet;
 }
 
@@ -2895,7 +2926,9 @@ BOOL	SC_SetCancelRequest(StatementClass *self)
 {
 	BOOL	enteredCS = FALSE;
 
+#ifdef	COMMON_CS_USED
 	ENTER_COMMON_CS;
+#endif /* COMMON_CS_USED */
 	if (0 != (self->cancel_info & CancelCompleted))
 		;
 	else if (STMT_EXECUTING == self->status)
@@ -2910,7 +2943,9 @@ BOOL	SC_SetCancelRequest(StatementClass *self)
 		else
 			self->cancel_info |= CancelRequestSet;
 	}
+#ifdef	COMMON_CS_USED
 	LEAVE_COMMON_CS;
+#endif /* COMMON_CS_USED */
 	return enteredCS;
 }
 #endif /* NOT_USED */
@@ -2918,10 +2953,10 @@ BOOL	SC_SetCancelRequest(StatementClass *self)
 BOOL	SC_AcceptedCancelRequest(const StatementClass *self)
 {
 	BOOL	shouldCancel = FALSE;
-	ENTER_COMMON_CS;
+	enter_common_cs();
 	if (0 != (self->cancel_info & (CancelRequestSet | CancelRequestAccepted | CancelCompleted)))
 		shouldCancel = TRUE;
-	LEAVE_COMMON_CS;
+	leave_common_cs();
 	return shouldCancel;
 }
 
