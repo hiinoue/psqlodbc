@@ -569,6 +569,22 @@ unfoldCXAttribute(ConnInfo *ci, const char *value)
 	ci->lower_case_identifier = (char)((flag & BIT_LOWERCASEIDENTIFIER) != 0);
 	ci->gssauth_use_gssapi = (char)((flag & BIT_GSSAUTHUSEGSSAPI) != 0);
 }
+
+BOOL
+get_DSN_or_Driver(ConnInfo *ci, const char *attribute, const char *value)
+{
+	BOOL	found = TRUE;
+
+	if (stricmp(attribute, "DSN") == 0)
+		strcpy(ci->dsn, value);
+	else if (stricmp(attribute, "driver") == 0)
+		strcpy(ci->drivername, value);
+	else
+		found = FALSE;
+
+	return found;
+}
+
 BOOL
 copyAttributes(ConnInfo *ci, const char *attribute, const char *value)
 {
@@ -790,6 +806,47 @@ copyCommonAttributes(ConnInfo *ci, const char *attribute, const char *value)
 }
 
 
+static void
+getCiDefaults(ConnInfo *ci)
+{
+	mylog("calling %s\n", __FUNCTION__);
+
+	ci->drivers.debug = DEFAULT_DEBUG;
+	ci->drivers.commlog = DEFAULT_COMMLOG;
+	sprintf(ci->onlyread, "%d", DEFAULT_READONLY);
+	sprintf(ci->fake_oid_index, "%d", DEFAULT_FAKEOIDINDEX);
+	sprintf(ci->show_oid_column, "%d", DEFAULT_SHOWOIDCOLUMN);
+	sprintf(ci->show_system_tables, "%d", DEFAULT_SHOWSYSTEMTABLES);
+	sprintf(ci->row_versioning, "%d", DEFAULT_ROWVERSIONING);
+	ci->allow_keyset = DEFAULT_UPDATABLECURSORS;
+	ci->lf_conversion = DEFAULT_LFCONVERSION;
+	ci->true_is_minus1 = DEFAULT_TRUEISMINUS1;
+	ci->int8_as = DEFAULT_INT8AS;
+	ci->bytea_as_longvarbinary = DEFAULT_BYTEAASLONGVARBINARY;
+	ci->use_server_side_prepare = DEFAULT_USESERVERSIDEPREPARE;
+	ci->lower_case_identifier = DEFAULT_LOWERCASEIDENTIFIER;
+	ci->gssauth_use_gssapi = DEFAULT_GSSAUTHUSEGSSAPI;
+	strcpy(ci->sslmode, DEFAULT_SSLMODE);
+	ci->force_abbrev_connstr = 0;
+	ci->fake_mss = 0;
+	ci->bde_environment = 0;
+	ci->cvt_null_date_string = 0;
+	ci->accessible_only = 0;
+	ci->ignore_round_trip_time = 0;
+	ci->disable_keepalive = 0;
+	{
+		const char *p;
+
+		ci->wcs_debug = 0;
+		if (NULL != (p = getenv("PSQLODBC_WCS_DEBUG")))
+			if (strcmp(p, "1") == 0)
+				ci->wcs_debug = 1;
+	}
+#ifdef	_HANDLE_ENLIST_IN_DTC_
+	ci->xa_opt = DEFAULT_XAOPT;
+#endif /* _HANDLE_ENLIST_IN_DTC_ */
+}
+
 void
 getDSNdefaults(ConnInfo *ci)
 {
@@ -909,21 +966,19 @@ getDSNinfo(ConnInfo *ci, char overwrite, const char *configDrvrname)
  *	If DSN is null and no driver, then use the default datasource.
  */
 	mylog("%s: DSN=%s driver=%s&%s overwrite=%d\n", func, DSN,
-		ci->drivername, NULL_IF_NULL(configDrvrname),
-			overwrite);
+		ci->drivername, NULL_IF_NULL(configDrvrname), overwrite);
+
+	getCiDefaults(ci);
 	drivername = ci->drivername;
 	if (DSN[0] == '\0')
 	{
-		if (drivername[0] != '\0') /* dns-less connections */
+		if (drivername[0] == '\0') /* adding new DSN via configDSN */
 		{
-			getDriversDefaults(drivername, &(ci->drivers));
-			return;
-		}
-		else	/* adding new DSN via configDSN */
-		{
-			drivername = configDrvrname;
+			if (configDrvrname)
+				drivername = configDrvrname;
 			strncpy_null(DSN, INI_DSN, sizeof(ci->dsn));
 		}
+		/* else dns-less connections */
 	}
 
 	/* brute-force chop off trailing blanks... */
@@ -939,6 +994,9 @@ mylog("drivername=%s\n", drivername);
 	if (!drivername[0])
 		drivername = INVALID_DRIVER;
 	getDriversDefaults(drivername, &(ci->drivers));
+
+	if (DSN[0] == '\0')
+		return;
 
 	/* Proceed with getting info for the given DSN. */
 

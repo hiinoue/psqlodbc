@@ -138,7 +138,7 @@ PGAPI_Connect(HDBC hdbc,
 	/* get the values for the DSN from the registry */
 	getDSNinfo(ci, CONN_OVERWRITE, NULL);
 	/* fill in any defaults */
-	getDSNdefaults(ci);
+	// getDSNdefaults(ci);
 
 	logs_on_off(1, ci->drivers.debug, ci->drivers.commlog);
 	/* initialize pg_version from connInfo.protocol    */
