@@ -155,7 +155,7 @@ PGAPI_DriverConnect(HDBC hdbc,
 	 * fill them in from the registry (assuming of course there is a DSN
 	 * given -- if not, it does nothing!)
 	 */
-	getDSNinfo(ci, CONN_OVERWRITE, NULL);
+	getDSNinfo(ci, NULL);
 	/* Parse the connect string and fill in conninfo for this hdbc. */
 	if (!dconn_get_connect_attributes(connStrIn, ci))
 	{
@@ -167,8 +167,6 @@ PGAPI_DriverConnect(HDBC hdbc,
 		CC_set_error(conn, CONN_OPENDB_ERROR, "Connection string parse error", func);
 		return SQL_ERROR;
 	}
-	/* Fill in any default parameters if they are not there. */
-	// getDSNdefaults(ci);
 	logs_on_off(1, ci->drivers.debug, ci->drivers.commlog);
 	if (connStrIn)
 	{
