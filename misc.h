@@ -49,14 +49,26 @@ ssize_t			my_strcpy(char *dst, ssize_t dst_len, const char *src, ssize_t src_len
  *	With GCC, the macro CHECK_NOT_CHAR_P() causes a compilation error
  *		when the target is pointer not a fixed array.
  */
-#if ((__GNUC__ * 100) + __GNUC_MINOR__) >= 406
+#if ((__GNUC__ * 100) + __GNUC_MINOR__) >= 402
 #define	FUNCTION_BEGIN_MACRO ({
 #define	FUNCTION_END_MACRO ;})
+
+#define _STRINGUIZE(s) #s
+#define GNUC_CATSTR(x,y) _STRINGUIZE(x ## y)
+#define GNUC_DO_PRAGMA(x) _Pragma (#x)
+#define GNUC_PRAGMA(x) GNUC_DO_PRAGMA(GCC diagnostic x)
+#if ((__GNUC__ * 100) + __GNUC_MINOR__) >= 406
+#define DISABLE_WARNING(warn) GNUC_PRAGMA(push) GNUC_PRAGMA(ignored GNUC_CATSTR(-W,warn))
+#define ENABLE_WARNING(warn) GNUC_PRAGMA(pop)
+#else
+#define DISABLE_WARNING(warn) GNUC_PRAGMA(ignored GNUC_CATSTR(-W,warn))
+#define ENABLE_WARNING(warn) GNUC_PRAGMA(warning GNUC_CATSTR(-W,warn))
+#endif
+
 #define CHECK_NOT_CHAR_P(t) \
-_Pragma ("GCC diagnostic push") \
-_Pragma ("GCC diagnostic ignored \"-Wunused-variable\"") \
+DISABLE_WARNING(unused-variable) \
 	if (0) { typeof(t) dummy_for_check = {};} \
-_Pragma ("GCC diagnostic pop")
+ENABLE_WARNING(unused-variable)
 #else
 #define	FUNCTION_BEGIN_MACRO
 #define	FUNCTION_END_MACRO
