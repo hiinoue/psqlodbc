@@ -464,7 +464,7 @@ MYLOG(0, "CONVERT_FUNCTIONS=" FORMAT_ULEN "\n", value);
 
 		case SQL_ODBC_API_CONFORMANCE:	/* ODBC 1.0 */
 			len = 2;
-			value = SQL_OAC_LEVEL1;
+			value = SQL_OAC_LEVEL2;
 			break;
 
 		case SQL_ODBC_SAG_CLI_CONFORMANCE:		/* ODBC 1.0 */
@@ -790,7 +790,7 @@ MYLOG(0, "CONVERT_FUNCTIONS=" FORMAT_ULEN "\n", value);
 
 		case SQL_ODBC_INTERFACE_CONFORMANCE:
 			len = 4;
-			value = SQL_OIC_CORE;
+			value = SQL_OIC_LEVEL1;
 			if (ci->drivers.lie)
 				value = SQL_OIC_LEVEL2;
 			break;
